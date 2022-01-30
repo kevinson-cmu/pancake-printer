@@ -1,12 +1,12 @@
+import atexit
+from decimal import Decimal
 import serial
 import serial.tools.list_ports
-import time
-import atexit
 import sys
-from decimal import Decimal
+import time
 
 global serialVar
-timeout_seconds = 30
+timeout_seconds = 240
 
 # verbose makes the program print a lot more information
 verbose = True
@@ -18,7 +18,7 @@ global relativeExtruder
 
 # Feedrate - if nonzero, all movements/extrusions will be performed using
 # this one feedrate
-feedrate = 100
+feedrate = 0
 
 # List of commands to ignore
 ignoreList = ["M73", "M201", "M203", "M104", "M105", "M106", "M107", "M109", 
@@ -100,7 +100,7 @@ def main():
         sys.exit()
 
     # skip through startup info
-    time.sleep(5)
+    time.sleep(3)
     while True:
         line = serialVar.readline()
         print(line)
@@ -188,24 +188,30 @@ def main():
             # G0 & G1 - Linear Move command
             if command.find("G0") != -1 or command.find("G1") != -1:
                 breakdown = command.split()
+                remI = 0
                 for i in range(0, len(breakdown)):
-                    if breakdown[i][0:1] == 'F':
+                    if breakdown[i+remI][0:1] == 'F':
                         if feedrate != 0:
-                            breakdown[i] = "F" + str(feedrate)
-                    if breakdown[i][0:1] == 'X':
+                            breakdown[i+remI] = "F" + str(feedrate)
+                    if breakdown[i+remI][0:1] == 'X':    
                         continue
-                    if breakdown[i][0:1] == 'Y':
+                    if breakdown[i+remI][0:1] == 'Y':
                         continue
-                    if breakdown[i][0:1] == 'Z':
-                        del breakdown[i]
-                        i -= 1
+                    if breakdown[i+remI][0:1] == 'Z':
+                        del breakdown[i+remI]
+                        remI = -1
                         continue
-                    if breakdown[i][0:1] == 'E':
-                        e = float(Decimal(breakdown[i][1:]))
-                        breakdown[i]= 'Z' + str(ecord + e)
+                    if breakdown[i+remI][0:1] == 'E':
+                        e = float(Decimal(breakdown[i+remI][1:]))
+                        breakdown[i+remI]= 'Z' + str(ecord + e)
                         continue
                 
-                command = ' '.join(breakdown)
+                command = ' '.join(breakdown) + "\n"
+
+            if command.find("G4") != -1:
+                breakdown = command.split()
+                if len(breakdown) < 2:
+                    command = "G4 P1\n"
 
             send_gcode(serialVar, command, time.clock())
 
