@@ -18,13 +18,15 @@ global relativeExtruder
 
 # Feedrate - if nonzero, all movements/extrusions will be performed using
 # this one feedrate
-feedrate = 30
+feedrate = 35
 # FeedrateMax - if nonzero, caps feedrate at this
 feedrateMax = 50
 
 xScale = 0.07
 yScale = 0.07
-eScale = 0.50
+#eScale = 0.35
+#ratio0
+eScale = 0.45
 # TODO: try increased feedrate + increase eScale
 
 # List of commands to ignore
