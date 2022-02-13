@@ -26,7 +26,10 @@ xScale = 0.07
 yScale = 0.07
 #eScale = 0.35
 #ratio0
-eScale = 0.45
+eScale = 0.55
+#reduce ratio for minion
+#eScale = 0.32
+#farnam might need more feedrate
 # TODO: try increased feedrate + increase eScale
 
 # List of commands to ignore
