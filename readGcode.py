@@ -18,11 +18,20 @@ global relativeExtruder
 
 # Feedrate - if nonzero, all movements/extrusions will be performed using
 # this one feedrate
-feedrate = 0
+feedrate = 35
+# FeedrateMax - if nonzero, caps feedrate at this
+feedrateMax = 50
+
+xScale = 0.07
+yScale = 0.07
+#eScale = 0.35
+#ratio0
+eScale = 0.45
+# TODO: try increased feedrate + increase eScale
 
 # List of commands to ignore
 ignoreList = ["M73", "M201", "M203", "M104", "M105", "M106", "M107", "M109", 
-    "M140", "M190", "M204", "M205"]
+    "M140", "M190", "M204", "M205", "M84"]
 
 # When the gcode is sent, a queue is automatically formed by the firmware, 
 # suggesting that we could send all the commands at the same time. 
@@ -65,6 +74,9 @@ def send_gcode(ser, command, start_time):
 def sendInitialCommands():
     if feedrate != 0:
         send_gcode(serialVar, "G1 F" + str(feedrate) + '\n', time.clock())
+    if feedrate > feedrateMax or feedrate == 0:
+        send_gcode(serialVar, "G1 F" + str(feedrateMax) + '\n', time.clock())
+    send_gcode(serialVar, "G21\n", time.clock())
 
 def main():
     if verbose:
@@ -130,6 +142,7 @@ def main():
         #ycord = 0
         #zcord = 0
         ecord = 0
+        ebank = 0
 
         # Parse lines
         for line in lines:
@@ -154,6 +167,7 @@ def main():
 
             # G92 - reset E0
             if command.find("G92") != -1:
+                ebank = ebank + ecord
                 ecord = 0
                 continue
             
@@ -184,7 +198,6 @@ def main():
             if command.find("G28") != -1:
                 print("[0, 0, 0, 0]")
 
-            extrudeLen = 0
             # G0 & G1 - Linear Move command
             if command.find("G0") != -1 or command.find("G1") != -1:
                 breakdown = command.split()
@@ -193,9 +206,16 @@ def main():
                     if breakdown[i+remI][0:1] == 'F':
                         if feedrate != 0:
                             breakdown[i+remI] = "F" + str(feedrate)
-                    if breakdown[i+remI][0:1] == 'X':    
+                        f = float(Decimal(breakdown[i+remI][1:]))
+                        if f > feedrateMax:
+                            breakdown[i+remI] = "F" + str(feedrateMax)
+                    if breakdown[i+remI][0:1] == 'X':   
+                        x = float(Decimal(breakdown[i+remI][1:])) 
+                        breakdown[i+remI] = "X" + str(x*xScale)
                         continue
                     if breakdown[i+remI][0:1] == 'Y':
+                        y = float(Decimal(breakdown[i+remI][1:])) 
+                        breakdown[i+remI] = "Y" + str(y*yScale)
                         continue
                     if breakdown[i+remI][0:1] == 'Z':
                         del breakdown[i+remI]
@@ -203,7 +223,12 @@ def main():
                         continue
                     if breakdown[i+remI][0:1] == 'E':
                         e = float(Decimal(breakdown[i+remI][1:]))
-                        breakdown[i+remI]= 'Z' + str(ecord + e)
+                        if relativeExtruder:
+                            breakdown[i+remI]= 'Z' + str(eScale * (ebank + ecord + e))
+                            ecord = ecord + e
+                        else:
+                            breakdown[i+remI]= 'Z' + str(eScale * (ebank+e))
+                            ecord = e
                         continue
                 
                 command = ' '.join(breakdown) + "\n"
